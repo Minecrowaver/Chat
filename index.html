@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #4a6ee0;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .user-info {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .login-container {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .login-form {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus {
+            border-color: #4a6ee0;
+            outline: none;
+        }
+        
+        .btn {
+            background: #4a6ee0;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            background: #3a5ecf;
+        }
+        
+        .chat-container {
+            display: none;
+            height: 500px;
+            flex-direction: column;
+        }
+        
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message.own {
+            background: #4a6ee0;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 2px;
+        }
+        
+        .message.other {
+            background: white;
+            color: #333;
+            border: 1px solid #eee;
+            border-bottom-left-radius: 2px;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .message.own .message-header {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .message.other .message-header {
+            color: #777;
+        }
+        
+        .message-content {
+            word-wrap: break-word;
+        }
+        
+        .input-container {
+            display: flex;
+            padding: 15px;
+            background: white;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px 0 0 8px;
+            font-size: 16px;
+        }
+        
+        .send-btn {
+            background: #4a6ee0;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .send-btn:hover {
+            background: #3a5ecf;
+        }
+        
+        .logout-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: #ff3742;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #2ed573;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+        
+        .users-online {
+            padding: 10px 20px;
+            background: #f1f2f6;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .users-online span {
+            font-weight: 600;
+            color: #4a6ee0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Real-Time Chat</h1>
+            <p>Connect and chat with others in real-time</p>
+            <div class="user-info" id="userInfo" style="display: none;">
+                Welcome, <span id="usernameDisplay"></span>!
+                <button class="logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+        
+        <div class="login-container" id="loginContainer">
+            <h2 style="margin-bottom: 20px; color: #333;">Login to Chat</h2>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <button class="btn" id="loginBtn">Login</button>
+                <p style="margin-top: 20px; text-align: center; color: #777; font-size: 14px;">
+                    Demo: Use any username and password to login
+                </p>
+            </div>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="users-online">
+                Users online: <span id="onlineCount">1</span>
+            </div>
+            <div class="messages-container" id="messagesContainer">
+                <!-- Messages will be loaded here -->
+                <div class="message other">
+                    <div class="message-header">
+                        <span class="sender">System</span>
+                        <span class="time">Just now</span>
+                    </div>
+                    <div class="message-content">
+                        Welcome to the chat! Start a conversation.
+                    </div>
+                </div>
+            </div>
+            <div class="input-container">
+                <input type="text" class="message-input" id="messageInput" placeholder="Type your message...">
+                <button class="send-btn" id="sendBtn">Send</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="notification" id="notification">
+        Message sent successfully!
+    </div>
+
+    <script>
+        // DOM Elements
+        const loginContainer = document.getElementById('loginContainer');
+        const chatContainer = document.getElementById('chatContainer');
+        const userInfo = document.getElementById('userInfo');
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const notification = document.getElementById('notification');
+        const onlineCount = document.getElementById('onlineCount');
+
+        // State
+        let currentUser = null;
+        let messages = [];
+        let onlineUsers = 1;
+
+        // Simulate message storage (in a real app, this would be on the server)
+        const storedMessages = [
+            { id: 1, sender: "System", content: "Welcome to the chat! Start a conversation.", time: "10:00 AM" },
+            { id: 2, sender: "Alice", content: "Hello everyone! How are you doing today?", time: "10:05 AM" },
+            { id: 3, sender: "Bob", content: "I'm doing great! Just finished my project.", time: "10:07 AM" },
+            { id: 4, sender: "Charlie", content: "Has anyone tried the new JavaScript framework?", time: "10:15 AM" }
+        ];
+
+        // Initialize
+        function init() {
+            // Load messages from storage
+            messages = [...storedMessages];
+            renderMessages();
+            
+            // Event listeners
+            loginBtn.addEventListener('click', handleLogin);
+            logoutBtn.addEventListener('click', handleLogout);
+            sendBtn.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Simulate real-time updates
+            setInterval(simulateRealTimeUpdate, 5000);
+        }
+
+        // Login handler
+        function handleLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            
+            if (!username || !password) {
+                showNotification('Please enter both username and password', 'error');
+                return;
+            }
+            
+            // In a real app, this would validate against a server
+            currentUser = username;
+            usernameDisplay.textContent = currentUser;
+            
+            // Switch to chat view
+            loginContainer.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            userInfo.style.display = 'block';
+            
+            showNotification(`Welcome, ${currentUser}!`);
+            
+            // Focus on message input
+            messageInput.focus();
+        }
+
+        // Logout handler
+        function handleLogout() {
+            currentUser = null;
+            usernameInput.value = '';
+            passwordInput.value = '';
+            
+            // Switch to login view
+            loginContainer.style.display = 'flex';
+            chatContainer.style.display = 'none';
+            userInfo.style.display = 'none';
+            
+            showNotification('You have been logged out');
+        }
+
+        // Send message
+        function sendMessage() {
+            const content = messageInput.value.trim();
+            
+            if (!content) {
+                showNotification('Please enter a message', 'error');
+                return;
+            }
+            
+            // Create new message
+            const newMessage = {
+                id: messages.length + 1,
+                sender: currentUser,
+                content: content,
+                time: getCurrentTime()
+            };
+            
+            // Add to messages (in a real app, this would be sent to a server)
+            messages.push(newMessage);
+            
+            // Keep only last 100 messages
+            if (messages.length > 100) {
+                messages = messages.slice(messages.length - 100);
+            }
+            
+            // Render messages
+            renderMessages();
+            
+            // Clear input
+            messageInput.value = '';
+            
+            // Show notification
+            showNotification('Message sent!');
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Render messages
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageEl = document.createElement('div');
+                messageEl.className = `message ${message.sender === currentUser ? 'own' : 'other'}`;
+                
+                messageEl.innerHTML = `
+                    <div class="message-header">
+                        <span class="sender">${message.sender}</span>
+                        <span class="time">${message.time}</span>
+                    </div>
+                    <div class="message-content">${message.content}</div>
+                `;
+                
+                messagesContainer.appendChild(messageEl);
+            });
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Simulate real-time updates (in a real app, this would use WebSockets or similar)
+        function simulateRealTimeUpdate() {
+            // Only simulate if user is logged in
+            if (!currentUser) return;
+            
+            // 20% chance of a new message
+            if (Math.random() < 0.2) {
+                const users = ['Alice', 'Bob', 'Charlie', 'Diana', 'System'];
+                const randomUser = users[Math.floor(Math.random() * users.length)];
+                
+                // Don't show messages from current user
+                if (randomUser === currentUser) return;
+                
+                const messages = [
+                    "Hey there! How's it going?",
+                    "Has anyone seen the latest movie?",
+                    "I just finished reading a great book!",
+                    "The weather is amazing today!",
+                    "Does anyone want to collaborate on a project?",
+                    "Check out this cool website I found!",
+                    "I need help with my code, anyone available?",
+                    "What's everyone working on?",
+                    "Just deployed my new app!",
+                    "Happy Friday everyone!"
+                ];
+                
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                
+                const newMessage = {
+                    id: Date.now(),
+                    sender: randomUser,
+                    content: randomMessage,
+                    time: getCurrentTime()
+                };
+                
+                // Add to messages
+                if (this.messages) {
+                    this.messages.push(newMessage);
+                    
+                    // Keep only last 100 messages
+                    if (this.messages.length > 100) {
+                        this.messages = this.messages.slice(this.messages.length - 100);
+                    }
+                    
+                    // Render messages
+                    renderMessages();
+                }
+            }
+            
+            // Simulate user count changes
+            const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+            onlineUsers = Math.max(1, onlineUsers + change);
+            onlineCount.textContent = onlineUsers;
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            notification.textContent = message;
+            notification.style.background = type === 'error' ? '#ff4757' : '#2ed573';
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Get current time in HH:MM AM/PM format
+        function getCurrentTime() {
+            const now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            
+            return `${hours}:${minutes} ${ampm}`;
+        }
+
+        // Initialize the app
+        init();
+    </script>
+</body>
+</html>
