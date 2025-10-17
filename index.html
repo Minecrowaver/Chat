@@ -43,11 +43,6 @@
             margin-bottom: 5px;
         }
         
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        
         .user-info {
             position: absolute;
             right: 20px;
@@ -240,9 +235,13 @@
             color: #555;
         }
         
-        .users-online span {
-            font-weight: 600;
-            color: #4a6ee0;
+        .message-counter {
+            padding: 8px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
         }
     </style>
 </head>
@@ -270,7 +269,7 @@
                 </div>
                 <button class="btn" id="loginBtn">Login</button>
                 <p style="margin-top: 20px; text-align: center; color: #777; font-size: 14px;">
-                    Demo: Use any username and password to login
+                    For demo: Use any username/password
                 </p>
             </div>
         </div>
@@ -287,9 +286,12 @@
                         <span class="time">Just now</span>
                     </div>
                     <div class="message-content">
-                        Welcome to the chat! Start a conversation.
+                        Loading messages...
                     </div>
                 </div>
+            </div>
+            <div class="message-counter">
+                Messages: <span id="messageCount">0</span>/100
             </div>
             <div class="input-container">
                 <input type="text" class="message-input" id="messageInput" placeholder="Type your message...">
@@ -317,26 +319,16 @@
         const sendBtn = document.getElementById('sendBtn');
         const notification = document.getElementById('notification');
         const onlineCount = document.getElementById('onlineCount');
+        const messageCount = document.getElementById('messageCount');
 
         // State
         let currentUser = null;
         let messages = [];
         let onlineUsers = 1;
-
-        // Simulate message storage (in a real app, this would be on the server)
-        const storedMessages = [
-            { id: 1, sender: "System", content: "Welcome to the chat! Start a conversation.", time: "10:00 AM" },
-            { id: 2, sender: "Alice", content: "Hello everyone! How are you doing today?", time: "10:05 AM" },
-            { id: 3, sender: "Bob", content: "I'm doing great! Just finished my project.", time: "10:07 AM" },
-            { id: 4, sender: "Charlie", content: "Has anyone tried the new JavaScript framework?", time: "10:15 AM" }
-        ];
+        let messagePollInterval = null;
 
         // Initialize
         function init() {
-            // Load messages from storage
-            messages = [...storedMessages];
-            renderMessages();
-            
             // Event listeners
             loginBtn.addEventListener('click', handleLogin);
             logoutBtn.addEventListener('click', handleLogout);
@@ -347,8 +339,8 @@
                 }
             });
             
-            // Simulate real-time updates
-            setInterval(simulateRealTimeUpdate, 5000);
+            // Load any existing messages from localStorage (fallback)
+            loadMessages();
         }
 
         // Login handler
@@ -361,7 +353,6 @@
                 return;
             }
             
-            // In a real app, this would validate against a server
             currentUser = username;
             usernameDisplay.textContent = currentUser;
             
@@ -371,6 +362,9 @@
             userInfo.style.display = 'block';
             
             showNotification(`Welcome, ${currentUser}!`);
+            
+            // Start polling for new messages
+            startMessagePolling();
             
             // Focus on message input
             messageInput.focus();
@@ -382,6 +376,11 @@
             usernameInput.value = '';
             passwordInput.value = '';
             
+            // Stop polling
+            if (messagePollInterval) {
+                clearInterval(messagePollInterval);
+            }
+            
             // Switch to login view
             loginContainer.style.display = 'flex';
             chatContainer.style.display = 'none';
@@ -390,8 +389,53 @@
             showNotification('You have been logged out');
         }
 
+        // Load messages from server
+        async function loadMessages() {
+            try {
+                // In a real implementation, this would fetch from your server
+                // For now, we'll use localStorage as a fallback
+                const savedMessages = localStorage.getItem('chatMessages');
+                if (savedMessages) {
+                    messages = JSON.parse(savedMessages);
+                } else {
+                    // Initial demo messages
+                    messages = [
+                        { 
+                            id: 1, 
+                            sender: "System", 
+                            content: "Welcome to the chat! Start a conversation.", 
+                            time: getCurrentTime(),
+                            timestamp: Date.now()
+                        }
+                    ];
+                    saveMessages();
+                }
+                
+                renderMessages();
+                updateMessageCount();
+            } catch (error) {
+                console.error('Error loading messages:', error);
+                showNotification('Error loading messages', 'error');
+            }
+        }
+
+        // Save messages to server
+        async function saveMessages() {
+            try {
+                // In a real implementation, this would POST to your server
+                // For now, we'll use localStorage as a fallback
+                localStorage.setItem('chatMessages', JSON.stringify(messages));
+                
+                // Simulate server delay
+                return new Promise(resolve => setTimeout(resolve, 100));
+            } catch (error) {
+                console.error('Error saving messages:', error);
+                showNotification('Error saving message', 'error');
+            }
+        }
+
         // Send message
-        function sendMessage() {
+        async function sendMessage() {
             const content = messageInput.value.trim();
             
             if (!content) {
@@ -401,19 +445,23 @@
             
             // Create new message
             const newMessage = {
-                id: messages.length + 1,
+                id: Date.now(),
                 sender: currentUser,
                 content: content,
-                time: getCurrentTime()
+                time: getCurrentTime(),
+                timestamp: Date.now()
             };
             
-            // Add to messages (in a real app, this would be sent to a server)
+            // Add to messages
             messages.push(newMessage);
             
             // Keep only last 100 messages
             if (messages.length > 100) {
                 messages = messages.slice(messages.length - 100);
             }
+            
+            // Save to server
+            await saveMessages();
             
             // Render messages
             renderMessages();
@@ -449,61 +497,62 @@
             
             // Scroll to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            updateMessageCount();
         }
 
-        // Simulate real-time updates (in a real app, this would use WebSockets or similar)
-        function simulateRealTimeUpdate() {
-            // Only simulate if user is logged in
-            if (!currentUser) return;
-            
-            // 20% chance of a new message
-            if (Math.random() < 0.2) {
-                const users = ['Alice', 'Bob', 'Charlie', 'Diana', 'System'];
-                const randomUser = users[Math.floor(Math.random() * users.length)];
-                
-                // Don't show messages from current user
-                if (randomUser === currentUser) return;
-                
-                const messages = [
-                    "Hey there! How's it going?",
-                    "Has anyone seen the latest movie?",
-                    "I just finished reading a great book!",
-                    "The weather is amazing today!",
-                    "Does anyone want to collaborate on a project?",
-                    "Check out this cool website I found!",
-                    "I need help with my code, anyone available?",
-                    "What's everyone working on?",
-                    "Just deployed my new app!",
-                    "Happy Friday everyone!"
-                ];
-                
-                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-                
-                const newMessage = {
-                    id: Date.now(),
-                    sender: randomUser,
-                    content: randomMessage,
-                    time: getCurrentTime()
-                };
-                
-                // Add to messages
-                if (this.messages) {
-                    this.messages.push(newMessage);
+        // Start polling for new messages
+        function startMessagePolling() {
+            // Check for new messages every 2 seconds
+            messagePollInterval = setInterval(async () => {
+                await checkForNewMessages();
+            }, 2000);
+        }
+
+        // Check for new messages from server
+        async function checkForNewMessages() {
+            try {
+                // In a real implementation, this would fetch from your server
+                // For now, we'll simulate by checking localStorage
+                const savedMessages = localStorage.getItem('chatMessages');
+                if (savedMessages) {
+                    const serverMessages = JSON.parse(savedMessages);
                     
-                    // Keep only last 100 messages
-                    if (this.messages.length > 100) {
-                        this.messages = this.messages.slice(this.messages.length - 100);
+                    // Check if messages have changed
+                    if (serverMessages.length !== messages.length || 
+                        serverMessages[serverMessages.length - 1]?.id !== messages[messages.length - 1]?.id) {
+                        
+                        messages = serverMessages;
+                        renderMessages();
+                        
+                        // Show notification for new messages from others
+                        const lastMessage = messages[messages.length - 1];
+                        if (lastMessage && lastMessage.sender !== currentUser) {
+                            showNotification(`New message from ${lastMessage.sender}`);
+                        }
                     }
-                    
-                    // Render messages
-                    renderMessages();
                 }
+                
+                // Simulate user count changes
+                simulateUserActivity();
+                
+            } catch (error) {
+                console.error('Error checking for new messages:', error);
             }
-            
-            // Simulate user count changes
-            const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-            onlineUsers = Math.max(1, onlineUsers + change);
-            onlineCount.textContent = onlineUsers;
+        }
+
+        // Simulate user activity
+        function simulateUserActivity() {
+            // Random user count changes
+            if (Math.random() < 0.3) {
+                const change = Math.random() < 0.5 ? 1 : -1;
+                onlineUsers = Math.max(1, onlineUsers + change);
+                onlineCount.textContent = onlineUsers;
+            }
+        }
+
+        // Update message counter
+        function updateMessageCount() {
+            messageCount.textContent = messages.length;
         }
 
         // Show notification
