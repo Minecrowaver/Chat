@@ -243,13 +243,29 @@
             color: #666;
             text-align: center;
         }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            font-style: italic;
+        }
+        
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Real-Time Chat</h1>
-            <p>Connect and chat with others in real-time</p>
+            <p>Messages stored in GitHub - Real-time updates</p>
             <div class="user-info" id="userInfo" style="display: none;">
                 Welcome, <span id="usernameDisplay"></span>!
                 <button class="logout-btn" id="logoutBtn">Logout</button>
@@ -279,16 +295,7 @@
                 Users online: <span id="onlineCount">1</span>
             </div>
             <div class="messages-container" id="messagesContainer">
-                <!-- Messages will be loaded here -->
-                <div class="message other">
-                    <div class="message-header">
-                        <span class="sender">System</span>
-                        <span class="time">Just now</span>
-                    </div>
-                    <div class="message-content">
-                        Loading messages...
-                    </div>
-                </div>
+                <div class="loading">Loading messages from GitHub...</div>
             </div>
             <div class="message-counter">
                 Messages: <span id="messageCount">0</span>/100
@@ -321,11 +328,20 @@
         const onlineCount = document.getElementById('onlineCount');
         const messageCount = document.getElementById('messageCount');
 
+        // Configuration - UPDATE THIS WITH YOUR ACTUAL GITHUB REPO INFO
+        const GITHUB_USERNAME = 'your-github-username';  // Change this
+        const GITHUB_REPO = 'your-repo-name';           // Change this
+        const GITHUB_BRANCH = 'main';                   // Change if using different branch
+        
+        // GitHub API URLs
+        const MESSAGES_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/messages.json`;
+        
         // State
         let currentUser = null;
         let messages = [];
         let onlineUsers = 1;
         let messagePollInterval = null;
+        let lastMessageId = 0;
 
         // Initialize
         function init() {
@@ -339,12 +355,14 @@
                 }
             });
             
-            // Load any existing messages from localStorage (fallback)
-            loadMessages();
+            // Check if we have valid GitHub config
+            if (GITHUB_USERNAME === 'your-github-username' || GITHUB_REPO === 'your-repo-name') {
+                showNotification('Please update GitHub configuration in the code', 'error');
+            }
         }
 
         // Login handler
-        function handleLogin() {
+        async function handleLogin() {
             const username = usernameInput.value.trim();
             const password = passwordInput.value.trim();
             
@@ -362,6 +380,9 @@
             userInfo.style.display = 'block';
             
             showNotification(`Welcome, ${currentUser}!`);
+            
+            // Load messages from GitHub
+            await loadMessagesFromGitHub();
             
             // Start polling for new messages
             startMessagePolling();
@@ -389,49 +410,64 @@
             showNotification('You have been logged out');
         }
 
-        // Load messages from server
-        async function loadMessages() {
+        // Load messages from GitHub
+        async function loadMessagesFromGitHub() {
             try {
-                // In a real implementation, this would fetch from your server
-                // For now, we'll use localStorage as a fallback
-                const savedMessages = localStorage.getItem('chatMessages');
-                if (savedMessages) {
-                    messages = JSON.parse(savedMessages);
-                } else {
-                    // Initial demo messages
-                    messages = [
-                        { 
-                            id: 1, 
-                            sender: "System", 
-                            content: "Welcome to the chat! Start a conversation.", 
-                            time: getCurrentTime(),
-                            timestamp: Date.now()
-                        }
-                    ];
-                    saveMessages();
+                messagesContainer.innerHTML = '<div class="loading">Loading messages from GitHub...</div>';
+                
+                const response = await fetch(MESSAGES_URL + '?t=' + Date.now()); // Cache bust
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load messages: ${response.status}`);
+                }
+                
+                const githubMessages = await response.json();
+                messages = githubMessages;
+                
+                // Update last message ID
+                if (messages.length > 0) {
+                    lastMessageId = Math.max(...messages.map(m => m.id));
                 }
                 
                 renderMessages();
                 updateMessageCount();
+                
             } catch (error) {
-                console.error('Error loading messages:', error);
-                showNotification('Error loading messages', 'error');
+                console.error('Error loading messages from GitHub:', error);
+                messagesContainer.innerHTML = `
+                    <div class="error">
+                        Failed to load messages from GitHub.<br>
+                        Make sure messages.json exists in your repo.
+                    </div>
+                `;
+                messages = [];
             }
         }
 
-        // Save messages to server
-        async function saveMessages() {
-            try {
-                // In a real implementation, this would POST to your server
-                // For now, we'll use localStorage as a fallback
-                localStorage.setItem('chatMessages', JSON.stringify(messages));
-                
-                // Simulate server delay
-                return new Promise(resolve => setTimeout(resolve, 100));
-            } catch (error) {
-                console.error('Error saving messages:', error);
-                showNotification('Error saving message', 'error');
+        // Save messages to GitHub (simulated - would need GitHub API with write access)
+        async function saveMessageToGitHub(newMessage) {
+            // Note: This is a simulation since we can't write to GitHub via frontend
+            // In a real implementation, you'd need:
+            // 1. A backend service with GitHub API access
+            // 2. Or use GitHub Pages with a different storage approach
+            
+            // For demo purposes, we'll simulate by storing in localStorage
+            // and pretending it's saved to GitHub
+            
+            messages.push(newMessage);
+            
+            // Keep only last 100 messages
+            if (messages.length > 100) {
+                messages = messages.slice(messages.length - 100);
             }
+            
+            // Store in localStorage as fallback
+            localStorage.setItem('github_chat_messages', JSON.stringify(messages));
+            
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            return true;
         }
 
         // Send message
@@ -452,33 +488,34 @@
                 timestamp: Date.now()
             };
             
-            // Add to messages
-            messages.push(newMessage);
+            // Save to GitHub (simulated)
+            const success = await saveMessageToGitHub(newMessage);
             
-            // Keep only last 100 messages
-            if (messages.length > 100) {
-                messages = messages.slice(messages.length - 100);
+            if (success) {
+                // Render messages
+                renderMessages();
+                
+                // Clear input
+                messageInput.value = '';
+                
+                // Show notification
+                showNotification('Message sent! (Stored locally - GitHub write access needed for real storage)');
+                
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } else {
+                showNotification('Failed to send message', 'error');
             }
-            
-            // Save to server
-            await saveMessages();
-            
-            // Render messages
-            renderMessages();
-            
-            // Clear input
-            messageInput.value = '';
-            
-            // Show notification
-            showNotification('Message sent!');
-            
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
         // Render messages
         function renderMessages() {
             messagesContainer.innerHTML = '';
+            
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<div class="loading">No messages yet. Start the conversation!</div>';
+                return;
+            }
             
             messages.forEach(message => {
                 const messageEl = document.createElement('div');
@@ -502,27 +539,31 @@
 
         // Start polling for new messages
         function startMessagePolling() {
-            // Check for new messages every 2 seconds
+            // Check for new messages every 3 seconds
             messagePollInterval = setInterval(async () => {
                 await checkForNewMessages();
-            }, 2000);
+            }, 3000);
         }
 
-        // Check for new messages from server
+        // Check for new messages from GitHub
         async function checkForNewMessages() {
             try {
-                // In a real implementation, this would fetch from your server
-                // For now, we'll simulate by checking localStorage
-                const savedMessages = localStorage.getItem('chatMessages');
-                if (savedMessages) {
-                    const serverMessages = JSON.parse(savedMessages);
+                const response = await fetch(MESSAGES_URL + '?t=' + Date.now());
+                
+                if (response.ok) {
+                    const githubMessages = await response.json();
                     
-                    // Check if messages have changed
-                    if (serverMessages.length !== messages.length || 
-                        serverMessages[serverMessages.length - 1]?.id !== messages[messages.length - 1]?.id) {
+                    // Check if we have new messages
+                    if (githubMessages.length > messages.length || 
+                        (githubMessages.length > 0 && githubMessages[githubMessages.length - 1].id > lastMessageId)) {
                         
-                        messages = serverMessages;
+                        messages = githubMessages;
                         renderMessages();
+                        
+                        // Update last message ID
+                        if (messages.length > 0) {
+                            lastMessageId = Math.max(...messages.map(m => m.id));
+                        }
                         
                         // Show notification for new messages from others
                         const lastMessage = messages[messages.length - 1];
