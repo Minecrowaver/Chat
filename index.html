@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Chat</title>
+    <title>SupaBase Chat</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -11,605 +12,651 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
-            background: linear-gradient(135deg, #6e8efb, #a777e3);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
-        
+
         .container {
             width: 100%;
             max-width: 800px;
-            background: white;
+            background-color: rgba(255, 255, 255, 0.9);
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
         }
-        
+
         .header {
-            background: #4a6ee0;
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
             color: white;
             padding: 20px;
             text-align: center;
             position: relative;
         }
-        
+
         .header h1 {
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 5px;
         }
-        
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
         .user-info {
             position: absolute;
             right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 14px;
+            top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        
-        .login-container {
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #8e2de2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .auth-section {
             padding: 30px;
             display: flex;
             flex-direction: column;
+            gap: 20px;
             align-items: center;
         }
-        
-        .login-form {
+
+        .auth-form {
             width: 100%;
             max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        
-        .form-group {
-            margin-bottom: 20px;
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #555;
+
+        .input-group label {
+            font-weight: 600;
+            color: #333;
         }
-        
-        .form-group input {
-            width: 100%;
+
+        .input-group input {
             padding: 12px 15px;
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
-            transition: border 0.3s;
+            transition: all 0.3s;
         }
-        
-        .form-group input:focus {
-            border-color: #4a6ee0;
+
+        .input-group input:focus {
             outline: none;
+            border-color: #8e2de2;
+            box-shadow: 0 0 0 2px rgba(142, 45, 226, 0.2);
         }
-        
+
         .btn {
-            background: #4a6ee0;
-            color: white;
-            border: none;
             padding: 12px 20px;
+            border: none;
             border-radius: 8px;
-            cursor: pointer;
             font-size: 16px;
             font-weight: 600;
-            transition: background 0.3s;
-            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s;
         }
-        
-        .btn:hover {
-            background: #3a5ecf;
+
+        .btn-primary {
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
+            color: white;
         }
-        
-        .chat-container {
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(142, 45, 226, 0.4);
+        }
+
+        .btn-secondary {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e0e0e0;
+        }
+
+        .chat-section {
             display: none;
-            height: 500px;
             flex-direction: column;
+            height: 100%;
         }
-        
+
         .messages-container {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: #f9f9f9;
-            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
-        
+
         .message {
-            margin-bottom: 15px;
-            padding: 12px 15px;
-            border-radius: 10px;
-            max-width: 80%;
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
             position: relative;
-            animation: fadeIn 0.3s ease;
+            word-wrap: break-word;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
+
         .message.own {
-            background: #4a6ee0;
+            align-self: flex-end;
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
             color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 2px;
+            border-bottom-right-radius: 5px;
         }
-        
+
         .message.other {
-            background: white;
+            align-self: flex-start;
+            background-color: #f0f0f0;
             color: #333;
-            border: 1px solid #eee;
-            border-bottom-left-radius: 2px;
+            border-bottom-left-radius: 5px;
         }
-        
+
         .message-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 5px;
             font-size: 12px;
+            margin-bottom: 5px;
+            opacity: 0.8;
         }
-        
-        .message.own .message-header {
-            color: rgba(255, 255, 255, 0.8);
-        }
-        
-        .message.other .message-header {
-            color: #777;
-        }
-        
+
         .message-content {
-            word-wrap: break-word;
+            font-size: 16px;
+            line-height: 1.4;
         }
-        
+
         .input-container {
+            padding: 20px;
+            border-top: 1px solid #eee;
             display: flex;
-            padding: 15px;
-            background: white;
+            gap: 10px;
         }
-        
+
         .message-input {
             flex: 1;
             padding: 12px 15px;
             border: 1px solid #ddd;
-            border-radius: 8px 0 0 8px;
+            border-radius: 24px;
             font-size: 16px;
+            outline: none;
+            transition: all 0.3s;
         }
-        
+
+        .message-input:focus {
+            border-color: #8e2de2;
+            box-shadow: 0 0 0 2px rgba(142, 45, 226, 0.2);
+        }
+
         .send-btn {
-            background: #4a6ee0;
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
             color: white;
             border: none;
-            padding: 0 20px;
-            border-radius: 0 8px 8px 0;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s;
+            transition: all 0.3s;
         }
-        
+
         .send-btn:hover {
-            background: #3a5ecf;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(142, 45, 226, 0.4);
         }
-        
-        .logout-btn {
-            background: #ff4757;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-            transition: background 0.3s;
+
+        .send-btn svg {
+            width: 24px;
+            height: 24px;
         }
-        
-        .logout-btn:hover {
-            background: #ff3742;
-        }
-        
+
         .notification {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #2ed573;
-            color: white;
-            padding: 12px 20px;
+            padding: 15px 20px;
             border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            display: none;
+            transform: translateX(150%);
+            transition: transform 0.3s;
             z-index: 1000;
         }
-        
-        .users-online {
-            padding: 10px 20px;
-            background: #f1f2f6;
-            border-bottom: 1px solid #ddd;
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background-color: #f44336;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #8e2de2;
+            border-bottom: 3px solid #8e2de2;
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #f5f5f5;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
             font-size: 14px;
-            color: #555;
+            margin-top: 5px;
         }
-        
-        .message-counter {
-            padding: 8px 20px;
-            background: #f8f9fa;
-            border-top: 1px solid #eee;
-            font-size: 12px;
-            color: #666;
-            text-align: center;
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4CAF50;
         }
-        
-        .loading {
-            text-align: center;
-            color: #666;
-            padding: 20px;
-            font-style: italic;
+
+        .status-dot.offline {
+            background-color: #f44336;
         }
-        
-        .storage-info {
-            background: #ffeaa7;
-            padding: 8px 15px;
-            font-size: 12px;
-            text-align: center;
-            color: #666;
-            border-bottom: 1px solid #fdcb6e;
+
+        @media (max-width: 600px) {
+            .container {
+                height: 95vh;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+            
+            .header h1 {
+                font-size: 22px;
+            }
+            
+            .user-info span {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Real-Time Chat</h1>
-            <p>Messages stored in browser - Shared across all users</p>
+            <h1>SupaBase Chat</h1>
+            <p>Real-time messaging with secure authentication</p>
             <div class="user-info" id="userInfo" style="display: none;">
-                Welcome, <span id="usernameDisplay"></span>!
-                <button class="logout-btn" id="logoutBtn">Logout</button>
+                <span id="userEmail"></span>
+                <div class="avatar" id="userAvatar"></div>
             </div>
         </div>
-        
-        <div class="storage-info">
-            💡 Messages are stored in your browser and shared via simulated real-time updates
+
+        <div class="tabs">
+            <div class="tab active" id="loginTab">Login</div>
+            <div class="tab" id="signupTab">Sign Up</div>
         </div>
-        
-        <div class="login-container" id="loginContainer">
-            <h2 style="margin-bottom: 20px; color: #333;">Login to Chat</h2>
-            <div class="login-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="Enter your username" required>
+
+        <div class="auth-section" id="authSection">
+            <div class="auth-form" id="loginForm">
+                <div class="input-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" placeholder="Enter your email">
                 </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter your password" required>
+                <div class="input-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password">
                 </div>
-                <button class="btn" id="loginBtn">Login</button>
-                <p style="margin-top: 20px; text-align: center; color: #777; font-size: 14px;">
-                    Use any username/password - No registration needed
-                </p>
+                <button class="btn btn-primary" id="loginBtn">Login</button>
+            </div>
+
+            <div class="auth-form" id="signupForm" style="display: none;">
+                <div class="input-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" placeholder="Enter your email">
+                </div>
+                <div class="input-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" placeholder="Create a password">
+                </div>
+                <button class="btn btn-primary" id="signupBtn">Sign Up</button>
             </div>
         </div>
-        
-        <div class="chat-container" id="chatContainer">
-            <div class="users-online">
-                Users online: <span id="onlineCount">1</span>
-            </div>
+
+        <div class="chat-section" id="chatSection">
             <div class="messages-container" id="messagesContainer">
-                <div class="loading">Loading messages...</div>
-            </div>
-            <div class="message-counter">
-                Messages: <span id="messageCount">0</span>/100 | Storage: <span id="storageType">Local</span>
+                <!-- Messages will be loaded here -->
             </div>
             <div class="input-container">
                 <input type="text" class="message-input" id="messageInput" placeholder="Type your message...">
-                <button class="send-btn" id="sendBtn">Send</button>
+                <button class="send-btn" id="sendBtn">
+                    <svg viewBox="0 0 24 24" fill="white">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>
-    
-    <div class="notification" id="notification">
-        Message sent successfully!
-    </div>
+
+    <div class="notification" id="notification"></div>
 
     <script>
-        // DOM Elements
-        const loginContainer = document.getElementById('loginContainer');
-        const chatContainer = document.getElementById('chatContainer');
-        const userInfo = document.getElementById('userInfo');
-        const usernameDisplay = document.getElementById('usernameDisplay');
+        // Supabase configuration
+        const SUPABASE_URL = 'https://kmyxsahxndulqckhxpro.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtteXhzYWh4bmR1bHFja2h4cHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA2NzUyMTMsImV4cCI6MjA3NjI1MTIxM30.0Y4YD7TcMKBkUibuuYPv59PNT_0MMsOjezIcYs96mDQ';
+        
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // DOM elements
+        const loginTab = document.getElementById('loginTab');
+        const signupTab = document.getElementById('signupTab');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        const authSection = document.getElementById('authSection');
+        const chatSection = document.getElementById('chatSection');
         const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
+        const signupBtn = document.getElementById('signupBtn');
         const messagesContainer = document.getElementById('messagesContainer');
         const messageInput = document.getElementById('messageInput');
         const sendBtn = document.getElementById('sendBtn');
+        const userInfo = document.getElementById('userInfo');
+        const userEmail = document.getElementById('userEmail');
+        const userAvatar = document.getElementById('userAvatar');
         const notification = document.getElementById('notification');
-        const onlineCount = document.getElementById('onlineCount');
-        const messageCount = document.getElementById('messageCount');
-        const storageType = document.getElementById('storageType');
-
-        // Configuration
-        const GITHUB_USERNAME = 'Minecrowaver';
-        const GITHUB_REPO = 'chat';
-        const GITHUB_BRANCH = 'main';
-        const MESSAGES_URL = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${GITHUB_BRANCH}/messages.json`;
         
-        // State
+        // State variables
         let currentUser = null;
         let messages = [];
-        let onlineUsers = 1;
-        let messagePollInterval = null;
-        let lastMessageId = 0;
-        let sessionId = Math.random().toString(36).substring(2);
-
-        // Initialize
-        function init() {
-            // Event listeners
-            loginBtn.addEventListener('click', handleLogin);
-            logoutBtn.addEventListener('click', handleLogout);
-            sendBtn.addEventListener('click', sendMessage);
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage();
-                }
-            });
+        
+        // Tab switching
+        loginTab.addEventListener('click', () => {
+            loginTab.classList.add('active');
+            signupTab.classList.remove('active');
+            loginForm.style.display = 'flex';
+            signupForm.style.display = 'none';
+        });
+        
+        signupTab.addEventListener('click', () => {
+            signupTab.classList.add('active');
+            loginTab.classList.remove('active');
+            signupForm.style.display = 'flex';
+            loginForm.style.display = 'none';
+        });
+        
+        // Authentication functions
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
             
-            // Try to load initial messages from GitHub
-            loadInitialMessages();
-        }
-
-        // Load initial messages from GitHub or localStorage
-        async function loadInitialMessages() {
-            try {
-                // First try to load from GitHub
-                const response = await fetch(MESSAGES_URL + '?t=' + Date.now());
-                if (response.ok) {
-                    const githubMessages = await response.json();
-                    messages = githubMessages;
-                    storageType.textContent = 'GitHub';
-                    showNotification('Loaded messages from GitHub');
-                } else {
-                    throw new Error('GitHub load failed');
-                }
-            } catch (error) {
-                // Fallback to localStorage
-                const localMessages = localStorage.getItem('chat_messages');
-                if (localMessages) {
-                    messages = JSON.parse(localMessages);
-                    storageType.textContent = 'Local Storage';
-                    showNotification('Loaded messages from local storage');
-                } else {
-                    // Default messages
-                    messages = [
-                        {
-                            id: 1,
-                            sender: "System",
-                            content: "Welcome to the chat! Start a conversation.",
-                            time: getCurrentTime(),
-                            timestamp: Date.now(),
-                            sessionId: sessionId
-                        }
-                    ];
-                    saveMessages();
-                    storageType.textContent = 'New Session';
-                }
-            }
-            
-            if (messages.length > 0) {
-                lastMessageId = Math.max(...messages.map(m => m.id));
-            }
-            
-            renderMessages();
-            updateMessageCount();
-        }
-
-        // Login handler
-        function handleLogin() {
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-            
-            if (!username || !password) {
-                showNotification('Please enter both username and password', 'error');
+            if (!email || !password) {
+                showNotification('Please fill in all fields', true);
                 return;
             }
             
-            currentUser = username;
-            usernameDisplay.textContent = currentUser;
-            
-            // Switch to chat view
-            loginContainer.style.display = 'none';
-            chatContainer.style.display = 'flex';
-            userInfo.style.display = 'block';
-            
-            showNotification(`Welcome, ${currentUser}!`);
-            
-            // Start real-time updates
-            startRealTimeUpdates();
-            
-            // Focus on message input
-            messageInput.focus();
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) throw error;
+                
+                currentUser = data.user;
+                showNotification('Login successful!');
+                switchToChat();
+                loadMessages();
+                setupRealtimeSubscription();
+            } catch (error) {
+                showNotification(error.message, true);
+            }
         }
-
-        // Logout handler
-        function handleLogout() {
-            currentUser = null;
-            usernameInput.value = '';
-            passwordInput.value = '';
+        
+        async function handleSignup() {
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
             
-            // Stop polling
-            if (messagePollInterval) {
-                clearInterval(messagePollInterval);
+            if (!email || !password) {
+                showNotification('Please fill in all fields', true);
+                return;
             }
             
-            // Switch to login view
-            loginContainer.style.display = 'flex';
-            chatContainer.style.display = 'none';
-            userInfo.style.display = 'none';
-            
-            showNotification('You have been logged out');
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password
+                });
+                
+                if (error) throw error;
+                
+                showNotification('Sign up successful! Please check your email for verification.');
+                loginTab.click();
+                document.getElementById('loginEmail').value = email;
+            } catch (error) {
+                showNotification(error.message, true);
+            }
         }
-
-        // Save messages to localStorage
-        function saveMessages() {
-            localStorage.setItem('chat_messages', JSON.stringify(messages));
-            localStorage.setItem('chat_last_update', Date.now().toString());
+        
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            currentUser = null;
+            switchToAuth();
+            showNotification('Logged out successfully');
         }
-
-        // Send message
-        function sendMessage() {
+        
+        // Message functions
+        async function sendMessage() {
             const content = messageInput.value.trim();
             
-            if (!content) {
-                showNotification('Please enter a message', 'error');
-                return;
+            if (!content) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('messages')
+                    .insert([
+                        { 
+                            content, 
+                            user_id: currentUser.id,
+                            user_email: currentUser.email
+                        }
+                    ]);
+                
+                if (error) throw error;
+                
+                messageInput.value = '';
+            } catch (error) {
+                showNotification('Error sending message: ' + error.message, true);
             }
-            
-            // Create new message
-            const newMessage = {
-                id: Date.now(),
-                sender: currentUser,
-                content: content,
-                time: getCurrentTime(),
-                timestamp: Date.now(),
-                sessionId: sessionId
-            };
-            
-            // Add to messages
-            messages.push(newMessage);
-            
-            // Keep only last 100 messages
-            if (messages.length > 100) {
-                messages = messages.slice(messages.length - 100);
-            }
-            
-            // Save to localStorage
-            saveMessages();
-            
-            // Render messages
-            renderMessages();
-            
-            // Clear input
-            messageInput.value = '';
-            
-            // Show notification
-            showNotification('Message sent and saved!');
-            
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
-
-        // Render messages
+        
+        async function loadMessages() {
+            try {
+                const { data, error } = await supabase
+                    .from('messages')
+                    .select('*')
+                    .order('created_at', { ascending: true })
+                    .limit(100);
+                
+                if (error) throw error;
+                
+                messages = data || [];
+                renderMessages();
+            } catch (error) {
+                showNotification('Error loading messages: ' + error.message, true);
+            }
+        }
+        
         function renderMessages() {
             messagesContainer.innerHTML = '';
             
-            if (messages.length === 0) {
-                messagesContainer.innerHTML = '<div class="loading">No messages yet. Start the conversation!</div>';
-                return;
-            }
-            
             messages.forEach(message => {
-                const messageEl = document.createElement('div');
-                messageEl.className = `message ${message.sender === currentUser ? 'own' : 'other'}`;
+                const messageElement = document.createElement('div');
+                messageElement.className = `message ${message.user_id === currentUser?.id ? 'own' : 'other'}`;
                 
-                messageEl.innerHTML = `
-                    <div class="message-header">
-                        <span class="sender">${message.sender}</span>
-                        <span class="time">${message.time}</span>
-                    </div>
-                    <div class="message-content">${message.content}</div>
+                const messageHeader = document.createElement('div');
+                messageHeader.className = 'message-header';
+                messageHeader.innerHTML = `
+                    <span>${message.user_email}</span>
+                    <span>${new Date(message.created_at).toLocaleTimeString()}</span>
                 `;
                 
-                messagesContainer.appendChild(messageEl);
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                messageContent.textContent = message.content;
+                
+                messageElement.appendChild(messageHeader);
+                messageElement.appendChild(messageContent);
+                messagesContainer.appendChild(messageElement);
             });
             
             // Scroll to bottom
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            updateMessageCount();
         }
-
-        // Start real-time updates
-        function startRealTimeUpdates() {
-            // Check for updates every 2 seconds
-            messagePollInterval = setInterval(() => {
-                checkForUpdates();
-            }, 2000);
-        }
-
-        // Check for updates from other browser tabs/sessions
-        function checkForUpdates() {
-            const lastUpdate = localStorage.getItem('chat_last_update');
-            const storedMessages = localStorage.getItem('chat_messages');
-            
-            if (storedMessages) {
-                const newMessages = JSON.parse(storedMessages);
-                
-                // Check if messages have changed
-                if (newMessages.length !== messages.length || 
-                    (newMessages.length > 0 && newMessages[newMessages.length - 1].id !== lastMessageId)) {
-                    
-                    messages = newMessages;
-                    lastMessageId = Math.max(...messages.map(m => m.id));
-                    renderMessages();
-                    
-                    // Show notification for new messages from other sessions
-                    const lastMessage = messages[messages.length - 1];
-                    if (lastMessage && lastMessage.sessionId !== sessionId && lastMessage.sender !== currentUser) {
-                        showNotification(`New message from ${lastMessage.sender}`);
+        
+        // Real-time subscription
+        function setupRealtimeSubscription() {
+            supabase
+                .channel('messages')
+                .on('postgres_changes', 
+                    { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'messages' 
+                    }, 
+                    (payload) => {
+                        messages.push(payload.new);
+                        
+                        // Keep only last 100 messages
+                        if (messages.length > 100) {
+                            messages.shift();
+                        }
+                        
+                        renderMessages();
                     }
-                }
+                )
+                .subscribe();
+        }
+        
+        // UI functions
+        function switchToChat() {
+            authSection.style.display = 'none';
+            chatSection.style.display = 'flex';
+            userInfo.style.display = 'flex';
+            
+            userEmail.textContent = currentUser.email;
+            userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
+            
+            // Add logout button to user info
+            if (!document.getElementById('logoutBtn')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logoutBtn';
+                logoutBtn.className = 'btn btn-secondary';
+                logoutBtn.textContent = 'Logout';
+                logoutBtn.addEventListener('click', handleLogout);
+                userInfo.appendChild(logoutBtn);
+            }
+        }
+        
+        function switchToAuth() {
+            authSection.style.display = 'flex';
+            chatSection.style.display = 'none';
+            userInfo.style.display = 'none';
+            
+            // Clear forms
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('signupEmail').value = '';
+            document.getElementById('signupPassword').value = '';
+        }
+        
+        function showNotification(message, isError = false) {
+            notification.textContent = message;
+            notification.className = 'notification';
+            
+            if (isError) {
+                notification.classList.add('error');
             }
             
-            // Simulate user activity
-            simulateUserActivity();
-        }
-
-        // Simulate user activity
-        function simulateUserActivity() {
-            // Random user count changes
-            if (Math.random() < 0.3) {
-                const change = Math.random() < 0.5 ? 1 : -1;
-                onlineUsers = Math.max(1, onlineUsers + change);
-                onlineCount.textContent = onlineUsers;
-            }
-        }
-
-        // Update message counter
-        function updateMessageCount() {
-            messageCount.textContent = messages.length;
-        }
-
-        // Show notification
-        function showNotification(message, type = 'success') {
-            notification.textContent = message;
-            notification.style.background = type === 'error' ? '#ff4757' : '#2ed573';
-            notification.style.display = 'block';
+            notification.classList.add('show');
             
             setTimeout(() => {
-                notification.style.display = 'none';
+                notification.classList.remove('show');
             }, 3000);
         }
-
-        // Get current time in HH:MM AM/PM format
-        function getCurrentTime() {
-            const now = new Date();
-            let hours = now.getHours();
-            let minutes = now.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            hours = hours % 12;
-            hours = hours ? hours : 12;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            
-            return `${hours}:${minutes} ${ampm}`;
-        }
-
-        // Initialize the app
-        init();
+        
+        // Event listeners
+        loginBtn.addEventListener('click', handleLogin);
+        signupBtn.addEventListener('click', handleSignup);
+        
+        sendBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // Check if user is already logged in
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                currentUser = session.user;
+                switchToChat();
+                loadMessages();
+                setupRealtimeSubscription();
+            }
+        });
+        
+        // Listen for auth state changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                switchToAuth();
+            }
+        });
+        
+        // Initial setup
+        switchToAuth();
     </script>
 </body>
 </html>
